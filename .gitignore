@@ -1,0 +1,11 @@
+*~
+.DS_Store
+/build/
+/build32/
+/build64/
+/release/
+/installer/Output/
+
+.vs
+.vscode
+.idea
