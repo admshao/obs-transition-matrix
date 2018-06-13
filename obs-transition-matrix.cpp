@@ -46,6 +46,54 @@ static void dump_saved_matrix()
 	}
 }
 
+static void load_default_transition_override()
+{
+	struct obs_frontend_source_list scenes = {};
+	obs_frontend_get_scenes(&scenes);
+
+	scene_matrix[ANY].scene = ANY;
+
+	for (size_t i = 0; i < scenes.sources.num; i++) {
+		obs_source_t *src = scenes.sources.array[i];
+		obs_data_t *data = obs_source_get_private_settings(src);
+
+		string transition = obs_data_get_string(data, "transition");
+		int duration = (int)obs_data_get_int(data,
+				"transition_duration");
+
+		obs_data_release(data);
+
+		string to = obs_source_get_name(src);
+		scene_matrix[ANY].data[to].to = to;
+		if (transition.empty())
+			scene_matrix[ANY].data[to].transition = NONE;
+		else
+			scene_matrix[ANY].data[to].transition = transition;
+
+		scene_matrix[ANY].data[to].duration = duration;
+		if (duration == 0)
+			scene_matrix[ANY].data[to].duration = DEFAULT;
+	}
+
+	obs_frontend_source_list_free(&scenes);
+}
+
+static void set_source_transition_override(struct transition_matrix &tm)
+{
+	obs_source_t *dest = obs_get_source_by_name(tm.to.c_str());
+	obs_data_t *data = obs_source_get_private_settings(dest);
+
+	if (tm.transition == NONE) {
+		obs_data_erase(data, "transition");
+	} else {
+		obs_data_set_string(data, "transition", tm.transition.c_str());
+		obs_data_set_int(data, "transition_duration", tm.duration);
+	}
+
+	obs_data_release(data);
+	obs_source_release(dest);
+}
+
 static void create_transition_matrix(map<string, transition_matrix> &tm,
 		obs_data_t *data)
 {
@@ -92,6 +140,8 @@ static void load_scenes(obs_data_t *matrix)
 
 static void load_saved_matrix(obs_data_t *save_data)
 {
+	load_default_transition_override();
+
 	obs_data_t *obj = obs_data_get_obj(save_data, MODULE_NAME);
 	if (!obj)
 		return;
@@ -148,8 +198,16 @@ static void save_scenes(obs_data_t *matrix)
 	obs_data_array_release(scenes);
 }
 
+static void save_default_transition_override()
+{
+	for (auto tm_it : scene_matrix[ANY].data)
+		set_source_transition_override(tm_it.second);
+}
+
 static void save_matrix_data(obs_data_t *save_data)
 {
+	save_default_transition_override();
+
 	if (scene_matrix.size() < 2)
 		return;
 

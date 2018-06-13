@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define NONE "None"
 #define ANY "Any"
+#define DEFAULT 300
 
 #define blog(level, msg, ...) blog(level, "transition-matrix: " msg, \
 		##__VA_ARGS__)
