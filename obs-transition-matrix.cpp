@@ -23,11 +23,13 @@ OBS_MODULE_USE_DEFAULT_LOCALE(MODULE_NAME, "en-US")
 
 map<string, scene_data> scene_matrix;
 
+static set<string> trNames;
 static set<string> sceneNames;
 
 static void clear_matrix_data()
 {
 	scene_matrix.clear();
+	trNames.clear();
 	sceneNames.clear();
 }
 
@@ -53,6 +55,16 @@ static void dump_saved_matrix()
 
 static void load_default_transition_override()
 {
+	struct obs_frontend_source_list transitions = {};
+	obs_frontend_get_transitions(&transitions);
+
+	for (size_t i = 0; i < transitions.sources.num; i++) {
+		obs_source_t *src = transitions.sources.array[i];
+		trNames.emplace(obs_source_get_name(src));
+	}
+
+	obs_frontend_source_list_free(&transitions);
+
 	struct obs_frontend_source_list scenes = {};
 	obs_frontend_get_scenes(&scenes);
 
@@ -366,9 +378,79 @@ static void handle_scene_list_changed()
 	}
 }
 
+static void handle_transition_list_changed()
+{
+	struct obs_frontend_source_list transitions = {};
+	obs_frontend_get_transitions(&transitions);
+
+	set<string> newTrNames;
+	for (size_t i = 0; i < transitions.sources.num; i++) {
+		obs_source_t *src = transitions.sources.array[i];
+		newTrNames.emplace(obs_source_get_name(src));
+	}
+
+	obs_frontend_source_list_free(&transitions);
+
+	if (newTrNames.size() > trNames.size()) {
+		trNames = newTrNames;
+		return;
+	}
+
+	if (newTrNames.size() == trNames.size()) {
+		string name;
+		string removed;
+		for (const string &s : newTrNames)
+			if (!trNames.erase(s))
+				name = s;
+
+		removed = *trNames.begin();
+		trNames = newTrNames;
+
+		for (auto &sm : scene_matrix)
+			for (auto &tm : sm.second.data)
+				if (tm.second.transition == removed)
+					tm.second.transition = name;
+	} else {
+		set<string> tempSet = trNames;
+		for (const string &s : newTrNames)
+			tempSet.erase(s);
+
+		string removedTr = *tempSet.begin();
+		trNames = newTrNames;
+
+		for (map<string, scene_data>::iterator sm = scene_matrix
+				.begin(); sm != scene_matrix.end();) {
+			for (map<string, transition_matrix>::iterator tm = sm
+					->second.data.begin(); tm != sm->second
+					.data.end();) {
+				if (tm->second.transition == removedTr) {
+					if (sm->first == ANY) {
+						tm->second.transition = NONE;
+						tm->second.duration = DEFAULT;
+					} else {
+						sm->second.data.erase(tm++);
+						continue;
+					}
+				}
+				tm++;
+			}
+
+			if (sm->second.data.empty())
+				scene_matrix.erase(sm++);
+			else
+				sm++;
+		}
+	}
+
+	update_scenes_transition_override();
+}
+
 static void handle_obs_frontend_event(enum obs_frontend_event event, void *)
 {
 	switch (event) {
+	case OBS_FRONTEND_EVENT_TRANSITION_LIST_CHANGED:
+		handle_transition_list_changed();
+		break;
 	case OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED:
 		handle_scene_list_changed();
 		break;
