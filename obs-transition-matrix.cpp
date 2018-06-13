@@ -13,6 +13,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <set>
+
 #include "obs-transition-matrix.hpp"
 #include "obs-transition-matrix-dialog.hpp"
 
@@ -21,9 +23,12 @@ OBS_MODULE_USE_DEFAULT_LOCALE(MODULE_NAME, "en-US")
 
 map<string, scene_data> scene_matrix;
 
+static set<string> sceneNames;
+
 static void clear_matrix_data()
 {
 	scene_matrix.clear();
+	sceneNames.clear();
 }
 
 static void dump_saved_matrix()
@@ -64,6 +69,9 @@ static void load_default_transition_override()
 		obs_data_release(data);
 
 		string to = obs_source_get_name(src);
+
+		sceneNames.emplace(to);
+
 		scene_matrix[ANY].data[to].to = to;
 		if (transition.empty())
 			scene_matrix[ANY].data[to].transition = NONE;
@@ -247,9 +255,123 @@ void update_scenes_transition_override()
 	obs_source_release(scene);
 }
 
+static void handle_scene_list_changed()
+{
+	struct obs_frontend_source_list scenes = {};
+	obs_frontend_get_scenes(&scenes);
+
+	set<string> newSceneNames;
+	for (size_t i = 0; i < scenes.sources.num; i++) {
+		obs_source_t *src = scenes.sources.array[i];
+		newSceneNames.emplace(obs_source_get_name(src));
+	}
+
+	obs_frontend_source_list_free(&scenes);
+
+	if (newSceneNames.size() > sceneNames.size()) {
+		set<string> tempSet = newSceneNames;
+		for (const string &s : sceneNames)
+			tempSet.erase(s);
+
+		sceneNames = newSceneNames;
+		string newName = *tempSet.begin();
+
+		scene_matrix[ANY].data[newName].to = newName;
+		scene_matrix[ANY].data[newName].transition = NONE;
+		scene_matrix[ANY].data[newName].duration = DEFAULT;
+
+		return;
+	} else if (newSceneNames.size() == sceneNames.size()) {
+		string name;
+		string removed;
+		for (const string &s : newSceneNames)
+			if (!sceneNames.erase(s))
+				name = s;
+		removed = *sceneNames.begin();
+
+		for (map<string, scene_data>::iterator sm = scene_matrix
+				.begin(); sm != scene_matrix.end();) {
+			if (sm->first == removed) {
+				scene_matrix[name].scene = name;
+
+				for (auto tm_it : sm->second.data) {
+					scene_matrix[name].data[tm_it.second.to]
+							.to = tm_it.second.to;
+					scene_matrix[name].data[tm_it.second.to]
+							.duration = tm_it.second
+							.duration;
+					scene_matrix[name].data[tm_it.second.to]
+							.transition = tm_it
+							.second.transition;
+				}
+
+				scene_matrix.erase(sm++);
+				continue;
+			}
+
+			for (map<string, transition_matrix>::iterator tm = sm
+					->second.data.begin(); tm != sm->second
+					.data.end();) {
+				if (tm->first == removed) {
+					sm->second.data[name].to = name;
+					sm->second.data[name].transition = tm
+							->second.transition;
+					sm->second.data[name].duration = tm
+							->second.duration;
+
+					sm->second.data.erase(tm++);
+					continue;
+				}
+				tm++;
+			}
+
+			if (sm->second.data.empty())
+				scene_matrix.erase(sm++);
+			else
+				sm++;
+		}
+
+		sceneNames = newSceneNames;
+
+		update_scenes_transition_override();
+		return;
+	}
+
+	set<string> tempSet = sceneNames;
+	for (const string &s : newSceneNames)
+		tempSet.erase(s);
+
+	string removedScene = *tempSet.begin();
+	sceneNames = newSceneNames;
+
+	for (map<string, scene_data>::iterator sm = scene_matrix.begin();
+			sm != scene_matrix.end();) {
+		if (sm->first == removedScene) {
+			scene_matrix.erase(sm++);
+			continue;
+		}
+
+		for (map<string, transition_matrix>::iterator tm = sm->second
+				.data.begin(); tm != sm->second.data.end();) {
+			if (tm->first == removedScene)
+				sm->second.data.erase(tm++);
+			else
+				tm++;
+		}
+
+		if (sm->second.data.empty())
+			scene_matrix.erase(sm++);
+		else
+			sm++;
+	}
+}
+
 static void handle_obs_frontend_event(enum obs_frontend_event event, void *)
 {
 	switch (event) {
+	case OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED:
+		handle_scene_list_changed();
+		break;
 	case OBS_FRONTEND_EVENT_SCENE_CHANGED:
 		update_scenes_transition_override();
 		break;
