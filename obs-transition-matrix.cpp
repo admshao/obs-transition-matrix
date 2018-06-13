@@ -21,6 +21,26 @@ OBS_MODULE_USE_DEFAULT_LOCALE(MODULE_NAME, "en-US")
 
 map<string, scene_data> scene_matrix;
 
+static void dump_saved_matrix()
+{
+	blog(LOG_INFO, "Scene count: %lu", scene_matrix.size());
+
+	for (auto sm_it : scene_matrix) {
+		blog(LOG_INFO, "\t'From' Scene: %s", sm_it.first.c_str());
+		blog(LOG_INFO, "\tOverride count: %lu", sm_it.second.data
+				.size());
+
+		for (auto tm_it : sm_it.second.data) {
+			blog(LOG_INFO, "\t\t'To' Scene: '%s'", tm_it.second.to
+					.c_str());
+			blog(LOG_INFO, "\t\t\t\tTransition: %s", tm_it.second
+					.transition.c_str());
+			blog(LOG_INFO, "\t\t\t\tDuration: %d ms", tm_it.second
+					.duration);
+		}
+	}
+}
+
 static void handle_obs_frontend_save_load(obs_data_t *, bool, void *)
 {
 }
