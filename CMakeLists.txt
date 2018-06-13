@@ -21,9 +21,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
 set(obs-transition-matrix_HEADERS
+	obs-transition-matrix.hpp
 	)
 
 set(obs-transition-matrix_SOURCES
+	obs-transition-matrix.cpp
 	)
 
 include_directories(
