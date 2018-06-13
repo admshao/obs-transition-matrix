@@ -21,6 +21,11 @@ OBS_MODULE_USE_DEFAULT_LOCALE(MODULE_NAME, "en-US")
 
 map<string, scene_data> scene_matrix;
 
+static void clear_matrix_data()
+{
+	scene_matrix.clear();
+}
+
 static void dump_saved_matrix()
 {
 	blog(LOG_INFO, "Scene count: %lu", scene_matrix.size());
@@ -41,8 +46,131 @@ static void dump_saved_matrix()
 	}
 }
 
-static void handle_obs_frontend_save_load(obs_data_t *, bool, void *)
+static void create_transition_matrix(map<string, transition_matrix> &tm,
+		obs_data_t *data)
 {
+	string to = obs_data_get_string(data, "to");
+	tm[to].to = to;
+	tm[to].transition = obs_data_get_string(data, "transition");
+	tm[to].duration = (int)obs_data_get_int(data, "duration");
+}
+
+static void create_scene_data(obs_data_t *scene)
+{
+	obs_data_array_t *data = obs_data_get_array(scene, "data");
+	string sceneName = obs_data_get_string(scene, "scene");
+
+	scene_matrix[sceneName].scene = sceneName;
+
+	size_t transition_count = obs_data_array_count(data);
+	size_t i;
+	for (i = 0; i < transition_count; i++) {
+		obs_data_t *transition = obs_data_array_item(data, i);
+		create_transition_matrix(scene_matrix[sceneName].data,
+				transition);
+
+		obs_data_release(transition);
+	}
+
+	obs_data_array_release(data);
+}
+
+static void load_scenes(obs_data_t *matrix)
+{
+	obs_data_array_t *scenes = obs_data_get_array(matrix, "matrix");
+
+	size_t scene_count = obs_data_array_count(scenes);
+	size_t i;
+	for (i = 0; i < scene_count; i++) {
+		obs_data_t *scene = obs_data_array_item(scenes, i);
+		create_scene_data(scene);
+		obs_data_release(scene);
+	}
+
+	obs_data_array_release(scenes);
+}
+
+static void load_saved_matrix(obs_data_t *save_data)
+{
+	obs_data_t *obj = obs_data_get_obj(save_data, MODULE_NAME);
+	if (!obj)
+		return;
+
+	load_scenes(obj);
+
+	obs_data_release(obj);
+}
+
+static void save_transition_data(map<string, transition_matrix> &sd,
+		obs_data_array_t *scene)
+{
+	for (auto td_it : sd) {
+		obs_data_t *transition = obs_data_create();
+
+		obs_data_set_string(transition, "to", td_it.second.to.c_str());
+		obs_data_set_string(transition, "transition", td_it.second
+				.transition.c_str());
+		obs_data_set_int(transition, "duration", td_it.second.duration);
+
+		obs_data_array_push_back(scene, transition);
+
+		obs_data_release(transition);
+	}
+}
+
+static void save_scenes_data(obs_data_array_t *scenes)
+{
+	for (auto sm_it : scene_matrix) {
+		if (sm_it.first == ANY)
+			continue;
+
+		obs_data_t *scene = obs_data_create();
+		obs_data_array_t *data = obs_data_array_create();
+
+		save_transition_data(sm_it.second.data, data);
+		obs_data_set_string(scene, "scene", sm_it.first.c_str());
+		obs_data_set_array(scene, "data", data);
+
+		obs_data_array_push_back(scenes, scene);
+
+		obs_data_array_release(data);
+		obs_data_release(scene);
+	}
+}
+
+static void save_scenes(obs_data_t *matrix)
+{
+	obs_data_array_t *scenes = obs_data_array_create();
+
+	save_scenes_data(scenes);
+	obs_data_set_array(matrix, "matrix", scenes);
+
+	obs_data_array_release(scenes);
+}
+
+static void save_matrix_data(obs_data_t *save_data)
+{
+	if (scene_matrix.size() < 2)
+		return;
+
+	obs_data_t *obj = obs_data_create();
+
+	save_scenes(obj);
+	obs_data_set_obj(save_data, MODULE_NAME, obj);
+
+	obs_data_release(obj);
+}
+
+static void handle_obs_frontend_save_load(obs_data_t *save_data, bool saving,
+		void *)
+{
+	if (saving) {
+		save_matrix_data(save_data);
+	} else {
+		clear_matrix_data();
+		load_saved_matrix(save_data);
+		dump_saved_matrix();
+	}
 }
 
 static void handle_obs_frontend_event(enum obs_frontend_event, void *)

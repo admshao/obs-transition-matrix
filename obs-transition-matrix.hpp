@@ -24,6 +24,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define MODULE_NAME "obs-transition-matrix"
 
+#define NONE "None"
+#define ANY "Any"
+
 #define blog(level, msg, ...) blog(level, "transition-matrix: " msg, \
 		##__VA_ARGS__)
 
