@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(MODULE_NAME, "en-US")
 
+map<string, scene_data> scene_matrix;
+
 static void handle_obs_frontend_save_load(obs_data_t *, bool, void *)
 {
 }
@@ -34,6 +36,7 @@ bool obs_module_load(void)
 
 	auto cb = [] {
 		obs_frontend_push_ui_translation(obs_module_get_string);
+
 		TransitionMatrixDialog tmd((QMainWindow *)
 				obs_frontend_get_main_window());
 		tmd.exec();

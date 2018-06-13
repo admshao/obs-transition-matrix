@@ -15,6 +15,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <cstring>
+#include <map>
+
 #include <obs-module.h>
 #include <obs-frontend-api.h>
 #include <util/platform.h>
@@ -23,3 +26,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define blog(level, msg, ...) blog(level, "transition-matrix: " msg, \
 		##__VA_ARGS__)
+
+using namespace std;
+
+struct transition_matrix {
+	string to;
+	string transition;
+	int    duration;
+};
+
+struct scene_data {
+	string scene;
+	map<string, transition_matrix> data;
+};
+
+extern map<string, scene_data> scene_matrix;
