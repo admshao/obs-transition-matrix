@@ -14,7 +14,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "obs-transition-matrix.hpp"
-#include <QAction>
+#include "obs-transition-matrix-dialog.hpp"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(MODULE_NAME, "en-US")
@@ -34,6 +34,10 @@ bool obs_module_load(void)
 
 	auto cb = [] {
 		obs_frontend_push_ui_translation(obs_module_get_string);
+		TransitionMatrixDialog tmd((QMainWindow *)
+				obs_frontend_get_main_window());
+		tmd.exec();
+
 		obs_frontend_pop_ui_translation();
 	};
 
