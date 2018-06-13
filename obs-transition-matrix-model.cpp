@@ -19,6 +19,7 @@ TransitionMatrixModel::TransitionMatrixModel(QObject *parent)
 		:QStandardItemModel(parent)
 {
 	obs_frontend_get_scenes(&scenes);
+	obs_frontend_get_transitions(&transitions);
 
 	for (size_t row = 0; row < scenes.sources.num + 1; row++) {
 		for (size_t col = 0; col < scenes.sources.num; col++) {
@@ -29,6 +30,10 @@ TransitionMatrixModel::TransitionMatrixModel(QObject *parent)
 	}
 
 	tableView = dynamic_cast<QTableView *>(parent);
+	tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+
+	connect(tableView, SIGNAL(customContextMenuRequested(QPoint)),
+			SLOT(customMenuRequested(QPoint)));
 
 	QHeaderView *verticalHeader = tableView->verticalHeader();
 	verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
@@ -37,6 +42,159 @@ TransitionMatrixModel::TransitionMatrixModel(QObject *parent)
 	QHeaderView *horizontalHeader = tableView->horizontalHeader();
 	horizontalHeader->setSectionResizeMode(QHeaderView::Fixed);
 	horizontalHeader->setDefaultSectionSize(150);
+}
+
+void TransitionMatrixModel::customMenuRequested(const QPoint &pos)
+{
+	QModelIndex index = tableView->indexAt(pos);
+	if (index.row() == -1 || index.column() == -1
+			|| index.row() == index.column() + 1)
+		return;
+
+	obs_source_t *from = nullptr;
+	if (index.row() > 0)
+		from = scenes.sources.array[index.row() - 1];
+
+	obs_source_t *to = scenes.sources.array[index.column()];
+
+	string fromName = ANY;
+	if (from)
+		fromName = obs_source_get_name(from);
+
+	string toName = obs_source_get_name(to);
+
+	QMenu *menu = new QMenu(tableView);
+
+	QSpinBox *duration = new QSpinBox(menu);
+	duration->setMinimum(50);
+	duration->setSuffix("ms");
+	duration->setMaximum(20000);
+	duration->setSingleStep(50);
+	duration->setValue(DEFAULT);
+
+	auto sm_it = scene_matrix.find(fromName);
+	if (sm_it != scene_matrix.end()) {
+		auto data = sm_it->second.data;
+		auto it = data.find(toName);
+		if (it != data.end())
+			duration->setValue(it->second.duration);
+	}
+
+	auto setTransition = [=] (QAction *action, QSpinBox *duration,
+			QPushButton *pushBtn)
+	{
+		string transition = action->property("transition").toString()
+				.toStdString();
+
+		pushBtn->setText(transition.c_str());
+
+		if (transition == NONE) {
+			if (fromName == ANY) {
+				scene_matrix[fromName].data[toName].to = toName;
+				scene_matrix[fromName].data[toName].transition =
+						transition;
+				scene_matrix[fromName].data[toName].duration =
+						DEFAULT;
+				duration->setValue(DEFAULT);
+			} else {
+				scene_matrix[fromName].data.erase(toName);
+				if (scene_matrix[fromName].data.empty())
+					scene_matrix.erase(fromName);
+			}
+		} else {
+			scene_matrix[fromName].data[toName].to = toName;
+			scene_matrix[fromName].data[toName].transition =
+					transition;
+			scene_matrix[fromName].data[toName].duration =
+					duration->value();
+		}
+
+		blog(LOG_INFO, "Transition from '%s' to '%s' selected: %s %d",
+				fromName.c_str(), toName.c_str(), transition
+				.c_str(), duration->value());
+
+		tableView->update();
+	};
+
+	auto setDuration = [=] (int duration)
+	{
+		auto smit = scene_matrix.find(fromName);
+		if (smit != scene_matrix.end()) {
+			auto data = smit->second.data;
+			auto it = data.find(toName);
+			if (it != data.end()) {
+				scene_matrix[fromName].data[toName].duration =
+						duration;
+
+				blog(LOG_INFO, "Updated duration from '%s' to "
+						"'%s': %d", fromName.c_str(),
+						toName.c_str(), duration);
+
+				tableView->update();
+			}
+		}
+	};
+
+	connect(duration, QOverload<int>::of(&QSpinBox::valueChanged),
+			setDuration);
+
+	QPushButton *pushBtn = new QPushButton(menu);
+	QWidgetAction *pushBtnAction = new QWidgetAction(menu);
+	pushBtnAction->setDefaultWidget(pushBtn);
+	menu->addAction(pushBtnAction);
+
+	QMenu *transitionMenu = new QMenu;
+	pushBtn->setMenu(transitionMenu);
+	string currentName;
+	string largestName;
+
+	for (size_t i = 0; i < transitions.sources.num + 1; i++) {
+		string trName;
+
+		if (i > 0)
+			trName = obs_source_get_name(transitions.sources
+					.array[i - 1]);
+		else
+			trName = NONE;
+
+		if (trName.size() > largestName.size())
+			largestName = trName;
+
+		QAction *action = transitionMenu->addAction(trName.c_str());
+		action->setProperty("transition", trName.c_str());
+
+		bool match;
+		auto smit = scene_matrix.find(fromName);
+		if (smit != scene_matrix.end()) {
+			auto data = smit->second.data;
+			auto it = data.find(toName);
+			if (it != data.end()) {
+				match = it->second.transition == trName;
+				goto end;
+			}
+		}
+
+		match = trName == NONE;
+
+end:
+		if (match)
+			currentName = trName;
+
+		connect(action, &QAction::triggered, std::bind(setTransition,
+				action, duration, pushBtn));
+	}
+
+	QWidgetAction *durationAction = new QWidgetAction(menu);
+	durationAction->setDefaultWidget(duration);
+
+	menu->addSeparator();
+	menu->addAction(durationAction);
+
+	pushBtn->setText(largestName.c_str());
+
+	menu->popup(tableView->viewport()->mapToGlobal(pos));
+
+	pushBtn->setText(currentName.c_str());
 }
 
 int TransitionMatrixModel::rowCount(const QModelIndex &) const
@@ -140,4 +298,7 @@ QVariant TransitionMatrixModel::data(const QModelIndex &index, int role) const
 TransitionMatrixModel::~TransitionMatrixModel()
 {
 	obs_frontend_source_list_free(&scenes);
+	obs_frontend_source_list_free(&transitions);
+
+	update_scenes_transition_override();
 }

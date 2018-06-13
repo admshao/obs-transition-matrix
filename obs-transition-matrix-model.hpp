@@ -39,7 +39,11 @@ public:
 	QVariant data(const QModelIndex &index, int role = Qt::DisplayRole)
 			const override;
 
+public slots:
+	void customMenuRequested(const QPoint &pos);
+
 private:
 	QTableView *tableView = nullptr;
 	struct obs_frontend_source_list scenes = {};
+	struct obs_frontend_source_list transitions = {};
 };
