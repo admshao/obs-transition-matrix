@@ -231,8 +231,30 @@ static void handle_obs_frontend_save_load(obs_data_t *save_data, bool saving,
 	}
 }
 
-static void handle_obs_frontend_event(enum obs_frontend_event, void *)
+void update_scenes_transition_override()
 {
+	for (auto tm_it : scene_matrix[ANY].data)
+		set_source_transition_override(tm_it.second);
+
+	obs_source_t *scene = obs_frontend_get_current_scene();
+	string name = obs_source_get_name(scene);
+
+	auto sm_it = scene_matrix.find(name);
+	if (sm_it != scene_matrix.end())
+		for (auto tm_it : sm_it->second.data)
+			set_source_transition_override(tm_it.second);
+
+	obs_source_release(scene);
+}
+
+static void handle_obs_frontend_event(enum obs_frontend_event event, void *)
+{
+	switch (event) {
+	case OBS_FRONTEND_EVENT_SCENE_CHANGED:
+		update_scenes_transition_override();
+		break;
+	default:;
+	}
 }
 
 bool obs_module_load(void)

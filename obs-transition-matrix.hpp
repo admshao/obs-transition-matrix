@@ -45,3 +45,5 @@ struct scene_data {
 };
 
 extern map<string, scene_data> scene_matrix;
+
+extern void update_scenes_transition_override();
