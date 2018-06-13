@@ -23,11 +23,13 @@ set(CMAKE_AUTOUIC ON)
 set(obs-transition-matrix_HEADERS
 	obs-transition-matrix.hpp
 	obs-transition-matrix-dialog.hpp
+	obs-transition-matrix-model.hpp
 	)
 
 set(obs-transition-matrix_SOURCES
 	obs-transition-matrix.cpp
 	obs-transition-matrix-dialog.cpp
+	obs-transition-matrix-model.cpp
 	)
 
 include_directories(

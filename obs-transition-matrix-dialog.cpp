@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <QLabel>
 #include <QTableView>
 
-#include "obs-transition-matrix.hpp"
+#include "obs-transition-matrix-model.hpp"
 #include "obs-transition-matrix-dialog.hpp"
 
 TransitionMatrixDialog::TransitionMatrixDialog(QMainWindow *parent)
@@ -31,6 +31,7 @@ TransitionMatrixDialog::TransitionMatrixDialog(QMainWindow *parent)
 	/* --------------------------------------------- */
 
 	QTableView *tableView = new QTableView(this);
+	tableView->setModel(new TransitionMatrixModel(tableView));
 
 	tableView->setFocusPolicy(Qt::NoFocus);
 	tableView->setSelectionMode(QAbstractItemView::NoSelection);
