@@ -2,23 +2,42 @@ cmake_minimum_required(VERSION 3.2)
 
 project(obs-transition-matrix)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	set(ARCH_NAME "64bit")
+	set(OBS_BUILDDIR_ARCH "build64")
+	set(_lib_suffix 64)
+else()
+	set(ARCH_NAME "32bit")
+	set(OBS_BUILDDIR_ARCH "build32")
+	set(_lib_suffix 32)
+endif()
+
 ##########################################
 # find libobs                            #
 ##########################################
 include(external/FindLibObs.cmake)
 find_package(LibObs REQUIRED)
 
+# Find includes in corresponding build directories
+if(DEFINED QTDIR${_lib_suffix})
+	list(APPEND CMAKE_PREFIX_PATH "${QTDIR${_lib_suffix}}")
+elseif(DEFINED QTDIR)
+	list(APPEND CMAKE_PREFIX_PATH "${QTDIR}")
+elseif(DEFINED ENV{QTDIR${_lib_suffix}})
+	list(APPEND CMAKE_PREFIX_PATH "$ENV{QTDIR${_lib_suffix}}")
+elseif(DEFINED ENV{QTDIR})
+	list(APPEND CMAKE_PREFIX_PATH "$ENV{QTDIR}")
+endif()
+
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+
 ##########################################
 # QT support                             #
 ##########################################
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
-
-# Find includes in corresponding build directories
-set(CMAKE_PREFIX_PATH "${QTDIR}")
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
 
 set(obs-transition-matrix_HEADERS
 	obs-transition-matrix.hpp
@@ -53,14 +72,6 @@ target_link_libraries(obs-transition-matrix
 
 # --- Windows-specific build settings and tasks ---
 if(WIN32)
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		set(ARCH_NAME "64bit")
-		set(OBS_BUILDDIR_ARCH "build64")
-	else()
-		set(ARCH_NAME "32bit")
-		set(OBS_BUILDDIR_ARCH "build32")
-	endif()
-
 	# --- Release package helper ---
 	# The "release" folder has a structure similar OBS' one on Windows
 	set(RELEASE_DIR "${PROJECT_SOURCE_DIR}/release")
@@ -72,15 +83,15 @@ if(WIN32)
 		"${RELEASE_DIR}/data/obs-plugins/obs-transition-matrix"
 		"${RELEASE_DIR}/obs-plugins/${ARCH_NAME}")
 
-		COMMAND if $<CONFIG:Release>==1 ("${CMAKE_COMMAND}" -E copy_directory
-		"${PROJECT_SOURCE_DIR}/data"
-		"${RELEASE_DIR}/data/obs-plugins/obs-transition-matrix")
-
 		# If config is RelWithDebInfo, package release files
 		COMMAND if $<CONFIG:RelWithDebInfo>==1 (
 		"${CMAKE_COMMAND}" -E make_directory
 		"${RELEASE_DIR}/data/obs-plugins/obs-transition-matrix"
 		"${RELEASE_DIR}/obs-plugins/${ARCH_NAME}")
+
+		COMMAND if $<CONFIG:Release>==1 ("${CMAKE_COMMAND}" -E copy_directory
+		"${PROJECT_SOURCE_DIR}/data"
+		"${RELEASE_DIR}/data/obs-plugins/obs-transition-matrix")
 
 		COMMAND if $<CONFIG:RelWithDebInfo>==1 ("${CMAKE_COMMAND}" -E copy_directory
 		"${PROJECT_SOURCE_DIR}/data"
@@ -90,8 +101,13 @@ if(WIN32)
 		"$<TARGET_PDB_FILE:obs-transition-matrix>"
 		"${RELEASE_DIR}/obs-plugins/${ARCH_NAME}")
 
-		# Copy to obs-studio dev environment for immediate testing
-		COMMAND if $<CONFIG:Debug>==1 (
+		COMMAND (
+		"${CMAKE_COMMAND}" -E copy
+		"$<TARGET_FILE:obs-transition-matrix>"
+		"${RELEASE_DIR}/obs-plugins/${ARCH_NAME}")
+
+		# Copy to obs-studio environment for immediate testing
+		COMMAND (
 		"${CMAKE_COMMAND}" -E copy
 		"$<TARGET_FILE:obs-transition-matrix>"
 		"${LIBOBS_INCLUDE_DIR}/../${OBS_BUILDDIR_ARCH}/rundir/$<CONFIG>/obs-plugins/${ARCH_NAME}")
@@ -101,11 +117,11 @@ if(WIN32)
 		"$<TARGET_PDB_FILE:obs-transition-matrix>"
 		"${LIBOBS_INCLUDE_DIR}/../${OBS_BUILDDIR_ARCH}/rundir/$<CONFIG>/obs-plugins/${ARCH_NAME}")
 
-		COMMAND if $<CONFIG:Debug>==1 (
+		COMMAND (
 		"${CMAKE_COMMAND}" -E make_directory
 		"${LIBOBS_INCLUDE_DIR}/../${OBS_BUILDDIR_ARCH}/rundir/$<CONFIG>/data/obs-plugins/obs-transition-matrix")
 
-		COMMAND if $<CONFIG:Debug>==1 (
+		COMMAND (
 		"${CMAKE_COMMAND}" -E copy_directory
 		"${PROJECT_SOURCE_DIR}/data"
 		"${LIBOBS_INCLUDE_DIR}/../${OBS_BUILDDIR_ARCH}/rundir/$<CONFIG>/data/obs-plugins/obs-transition-matrix")
