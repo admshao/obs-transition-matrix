@@ -146,9 +146,9 @@ if(UNIX AND NOT APPLE)
 			"${CMAKE_INSTALL_PREFIX}/share/obs/obs-plugins/obs-transition-matrix/locale")
 	else()
 		install(TARGETS obs-transition-matrix LIBRARY DESTINATION
-			"${CMAKE_INSTALL_PREFIX}/rundir/Debug/obs-plugins/64bit")
+			"${CMAKE_INSTALL_PREFIX}/rundir/${CMAKE_BUILD_TYPE}/obs-plugins/${ARCH_NAME}")
 		install(FILES ${locale_files} DESTINATION
-			"${CMAKE_INSTALL_PREFIX}/rundir/Debug/data/obs-plugins/obs-transition-matrix/locale")
+			"${CMAKE_INSTALL_PREFIX}/rundir/${CMAKE_BUILD_TYPE}/data/obs-plugins/obs-transition-matrix/locale")
 	endif()
 endif()
 # --- End of section ---
