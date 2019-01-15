@@ -139,16 +139,16 @@ if(UNIX AND NOT APPLE)
 
 	file(GLOB locale_files data/locale/*.ini)
 
-	if(NOT CUSTOM)
-		install(TARGETS obs-transition-matrix LIBRARY DESTINATION
-			"${CMAKE_INSTALL_PREFIX}/lib/obs-plugins")
-		install(FILES ${locale_files} DESTINATION
-			"${CMAKE_INSTALL_PREFIX}/share/obs/obs-plugins/obs-transition-matrix/locale")
-	else()
+	if(CUSTOM)
 		install(TARGETS obs-transition-matrix LIBRARY DESTINATION
 			"${CMAKE_INSTALL_PREFIX}/rundir/${CMAKE_BUILD_TYPE}/obs-plugins/${ARCH_NAME}")
 		install(FILES ${locale_files} DESTINATION
 			"${CMAKE_INSTALL_PREFIX}/rundir/${CMAKE_BUILD_TYPE}/data/obs-plugins/obs-transition-matrix/locale")
+	else()
+		install(TARGETS obs-transition-matrix LIBRARY DESTINATION
+			"${CMAKE_INSTALL_PREFIX}/lib/obs-plugins")
+		install(FILES ${locale_files} DESTINATION
+			"${CMAKE_INSTALL_PREFIX}/share/obs/obs-plugins/obs-transition-matrix/locale")
 	endif()
 endif()
 # --- End of section ---
