@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QTableView>
+#include <QtWidgets/QColorDialog>
 
 #include "obs-transition-matrix-model.hpp"
 #include "obs-transition-matrix-dialog.hpp"
@@ -49,6 +50,7 @@ TransitionMatrixDialog::TransitionMatrixDialog(QMainWindow *parent)
 			obs_module_text("OBSTransitionMatrix.Close"));
 	QLabel *descriptionLabel = new QLabel(
 			obs_module_text("OBSTransitionMatrix.Description"));
+    descriptionLabel->setStyleSheet("QLabel { color : red; }");
 
 	QHBoxLayout *bottomLayout = new QHBoxLayout;
 	bottomLayout->addWidget(descriptionLabel);
