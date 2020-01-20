@@ -161,6 +161,8 @@ static void load_scenes(obs_data_t *matrix)
 
 static void load_saved_matrix(obs_data_t *save_data)
 {
+	clear_matrix_data();
+
 	load_default_transition_override();
 
 	obs_data_t *obj = obs_data_get_obj(save_data, MODULE_NAME);
@@ -170,6 +172,8 @@ static void load_saved_matrix(obs_data_t *save_data)
 	load_scenes(obj);
 
 	obs_data_release(obj);
+
+	dump_saved_matrix();
 }
 
 static void save_transition_data(map<string, transition_matrix> &sd,
@@ -238,18 +242,17 @@ static void save_matrix_data(obs_data_t *save_data)
 	obs_data_set_obj(save_data, MODULE_NAME, obj);
 
 	obs_data_release(obj);
+
+	update_scenes_transition_override();
 }
 
 static void handle_obs_frontend_save_load(obs_data_t *save_data, bool saving,
 					  void *)
 {
-	if (saving) {
+	if (saving)
 		save_matrix_data(save_data);
-	} else {
-		clear_matrix_data();
+	else
 		load_saved_matrix(save_data);
-		dump_saved_matrix();
-	}
 }
 
 void update_scenes_transition_override()
