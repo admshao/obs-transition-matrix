@@ -28,15 +28,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define ANY "Any"
 #define DEFAULT 300
 
-#define blog(level, msg, ...) blog(level, "transition-matrix: " msg, \
-		##__VA_ARGS__)
+#define blog(level, msg, ...) \
+	blog(level, "transition-matrix: " msg, ##__VA_ARGS__)
 
 using namespace std;
 
 struct transition_matrix {
 	string to;
 	string transition;
-	int    duration;
+	int duration;
 };
 
 struct scene_data {

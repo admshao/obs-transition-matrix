@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "obs-transition-matrix-dialog.hpp"
 
 OBS_DECLARE_MODULE()
+
 OBS_MODULE_USE_DEFAULT_LOCALE(MODULE_NAME, "en-US")
 
 map<string, scene_data> scene_matrix;
@@ -37,18 +38,18 @@ static void dump_saved_matrix()
 {
 	blog(LOG_INFO, "Scene count: %lu", scene_matrix.size());
 
-	for (auto sm_it : scene_matrix) {
+	for (const auto &sm_it : scene_matrix) {
 		blog(LOG_INFO, "\t'From' Scene: %s", sm_it.first.c_str());
-		blog(LOG_INFO, "\tOverride count: %lu", sm_it.second.data
-				.size());
+		blog(LOG_INFO, "\tOverride count: %lu",
+		     sm_it.second.data.size());
 
-		for (auto tm_it : sm_it.second.data) {
-			blog(LOG_INFO, "\t\t'To' Scene: '%s'", tm_it.second.to
-					.c_str());
-			blog(LOG_INFO, "\t\t\t\tTransition: %s", tm_it.second
-					.transition.c_str());
-			blog(LOG_INFO, "\t\t\t\tDuration: %d ms", tm_it.second
-					.duration);
+		for (const auto &tm_it : sm_it.second.data) {
+			blog(LOG_INFO, "\t\t'To' Scene: '%s'",
+			     tm_it.second.to.c_str());
+			blog(LOG_INFO, "\t\t\t\tTransition: %s",
+			     tm_it.second.transition.c_str());
+			blog(LOG_INFO, "\t\t\t\tDuration: %d ms",
+			     tm_it.second.duration);
 		}
 	}
 }
@@ -75,8 +76,8 @@ static void load_default_transition_override()
 		obs_data_t *data = obs_source_get_private_settings(src);
 
 		string transition = obs_data_get_string(data, "transition");
-		int duration = (int)obs_data_get_int(data,
-				"transition_duration");
+		int duration =
+			(int)obs_data_get_int(data, "transition_duration");
 
 		obs_data_release(data);
 
@@ -115,7 +116,7 @@ static void set_source_transition_override(struct transition_matrix &tm)
 }
 
 static void create_transition_matrix(map<string, transition_matrix> &tm,
-		obs_data_t *data)
+				     obs_data_t *data)
 {
 	string to = obs_data_get_string(data, "to");
 	tm[to].to = to;
@@ -135,7 +136,7 @@ static void create_scene_data(obs_data_t *scene)
 	for (i = 0; i < transition_count; i++) {
 		obs_data_t *transition = obs_data_array_item(data, i);
 		create_transition_matrix(scene_matrix[sceneName].data,
-				transition);
+					 transition);
 
 		obs_data_release(transition);
 	}
@@ -172,14 +173,14 @@ static void load_saved_matrix(obs_data_t *save_data)
 }
 
 static void save_transition_data(map<string, transition_matrix> &sd,
-		obs_data_array_t *scene)
+				 obs_data_array_t *scene)
 {
-	for (auto td_it : sd) {
+	for (const auto &td_it : sd) {
 		obs_data_t *transition = obs_data_create();
 
 		obs_data_set_string(transition, "to", td_it.second.to.c_str());
-		obs_data_set_string(transition, "transition", td_it.second
-				.transition.c_str());
+		obs_data_set_string(transition, "transition",
+				    td_it.second.transition.c_str());
 		obs_data_set_int(transition, "duration", td_it.second.duration);
 
 		obs_data_array_push_back(scene, transition);
@@ -240,7 +241,7 @@ static void save_matrix_data(obs_data_t *save_data)
 }
 
 static void handle_obs_frontend_save_load(obs_data_t *save_data, bool saving,
-		void *)
+					  void *)
 {
 	if (saving) {
 		save_matrix_data(save_data);
@@ -301,35 +302,37 @@ static void handle_scene_list_changed()
 				name = s;
 		removed = *sceneNames.begin();
 
-		for (map<string, scene_data>::iterator sm = scene_matrix
-				.begin(); sm != scene_matrix.end();) {
+		for (auto sm = scene_matrix.begin();
+		     sm != scene_matrix.end();) {
 			if (sm->first == removed) {
 				scene_matrix[name].scene = name;
 
-				for (auto tm_it : sm->second.data) {
-					scene_matrix[name].data[tm_it.second.to]
-							.to = tm_it.second.to;
-					scene_matrix[name].data[tm_it.second.to]
-							.duration = tm_it.second
-							.duration;
-					scene_matrix[name].data[tm_it.second.to]
-							.transition = tm_it
-							.second.transition;
+				for (const auto &tm_it : sm->second.data) {
+					scene_matrix[name]
+						.data[tm_it.second.to]
+						.to = tm_it.second.to;
+					scene_matrix[name]
+						.data[tm_it.second.to]
+						.duration =
+						tm_it.second.duration;
+					scene_matrix[name]
+						.data[tm_it.second.to]
+						.transition =
+						tm_it.second.transition;
 				}
 
 				scene_matrix.erase(sm++);
 				continue;
 			}
 
-			for (map<string, transition_matrix>::iterator tm = sm
-					->second.data.begin(); tm != sm->second
-					.data.end();) {
+			for (auto tm = sm->second.data.begin();
+			     tm != sm->second.data.end();) {
 				if (tm->first == removed) {
 					sm->second.data[name].to = name;
-					sm->second.data[name].transition = tm
-							->second.transition;
-					sm->second.data[name].duration = tm
-							->second.duration;
+					sm->second.data[name].transition =
+						tm->second.transition;
+					sm->second.data[name].duration =
+						tm->second.duration;
 
 					sm->second.data.erase(tm++);
 					continue;
@@ -356,15 +359,14 @@ static void handle_scene_list_changed()
 	string removedScene = *tempSet.begin();
 	sceneNames = newSceneNames;
 
-	for (map<string, scene_data>::iterator sm = scene_matrix.begin();
-			sm != scene_matrix.end();) {
+	for (auto sm = scene_matrix.begin(); sm != scene_matrix.end();) {
 		if (sm->first == removedScene) {
 			scene_matrix.erase(sm++);
 			continue;
 		}
 
-		for (map<string, transition_matrix>::iterator tm = sm->second
-				.data.begin(); tm != sm->second.data.end();) {
+		for (auto tm = sm->second.data.begin();
+		     tm != sm->second.data.end();) {
 			if (tm->first == removedScene)
 				sm->second.data.erase(tm++);
 			else
@@ -418,11 +420,10 @@ static void handle_transition_list_changed()
 		string removedTr = *tempSet.begin();
 		trNames = newTrNames;
 
-		for (map<string, scene_data>::iterator sm = scene_matrix
-				.begin(); sm != scene_matrix.end();) {
-			for (map<string, transition_matrix>::iterator tm = sm
-					->second.data.begin(); tm != sm->second
-					.data.end();) {
+		for (auto sm = scene_matrix.begin();
+		     sm != scene_matrix.end();) {
+			for (auto tm = sm->second.data.begin();
+			     tm != sm->second.data.end();) {
 				if (tm->second.transition == removedTr) {
 					if (sm->first == ANY) {
 						tm->second.transition = NONE;
@@ -463,14 +464,14 @@ static void handle_obs_frontend_event(enum obs_frontend_event event, void *)
 
 bool obs_module_load(void)
 {
-	QAction *action = (QAction*)obs_frontend_add_tools_menu_qaction(
-			obs_module_text("OBSTransitionMatrix"));
+	auto *action = (QAction *)obs_frontend_add_tools_menu_qaction(
+		obs_module_text("OBSTransitionMatrix"));
 
 	auto cb = [] {
 		obs_frontend_push_ui_translation(obs_module_get_string);
 
-		TransitionMatrixDialog tmd((QMainWindow *)
-				obs_frontend_get_main_window());
+		TransitionMatrixDialog tmd(
+			(QMainWindow *)obs_frontend_get_main_window());
 		tmd.exec();
 
 		obs_frontend_pop_ui_translation();
@@ -484,6 +485,4 @@ bool obs_module_load(void)
 	return true;
 }
 
-void obs_module_unload(void)
-{
-}
+void obs_module_unload(void) {}
