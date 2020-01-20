@@ -298,6 +298,9 @@ static void handle_scene_list_changed()
 
 		return;
 	} else if (newSceneNames.size() == sceneNames.size()) {
+		if (newSceneNames == sceneNames)
+			return;
+
 		string name;
 		string removed;
 		for (const string &s : newSceneNames)
