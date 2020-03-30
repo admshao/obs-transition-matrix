@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include <map>
 
+#include <string>
 #include <obs-module.h>
 #include <obs-frontend-api.h>
 #include <util/platform.h>
